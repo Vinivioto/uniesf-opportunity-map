@@ -1,0 +1,24 @@
+
+# Dados originais e intermediarios
+data/raw/
+data/interim/
+data/processed/
+
+# Ambiente virtual Python
+.venv/
+venv/
+
+# Cache do Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Arquivos temporarios do sistema
+.DS_Store
+Thumbs.db
+
+# Configuracoes locais e segredos
+.env
+.env.*
+!.env.example
+  
