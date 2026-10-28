@@ -1,6 +1,6 @@
 # Diário do projeto — UNIESF Opportunity Map
 
-**Última atualização:** 22/10/2026  
+**Última atualização:** 28/10/2026  
 **Regra de registro:** somente etapas efetivamente executadas e resultados confirmados durante o trabalho. Dados e indicadores não representam necessariamente pessoas únicas.
 
 ## 1. Organização e inventário dos dados — concluído
@@ -56,7 +56,47 @@
 - Cinco maiores saldos de emprego por grupo CNAE em 2025: `10.1` Abate e fabricação de produtos de carne (+13.212); `47.1` Comércio varejista não especializado (+9.931); `56.1` Restaurantes e outros serviços de alimentação (+4.355); `41.2` Construção de edifícios (+1.871); `81.2` Atividades de limpeza (+1.800).
 - Executado pelo usuário o comando `ranking_grupos_2025.to_parquet(path="../data/processed/trabalho/emprego_por_grupo_2025.parquet")`; a execução não teve erro relatado. O arquivo está no ambiente local do usuário, não neste ambiente do diário.
 
+## 7. CAGED por município e grupo CNAE — concluído (23–27/10/2026)
+- Agrupado `caged_atividades` por `codigo_ibge` e `grupo`, com contagem de admissões (`saldomovimentacao == 1`), desligamentos (`== -1`) e soma do saldo.
+- Resultado: **29.601 combinações município–grupo** em **1.054 municípios**; `122` movimentações sem grupo ficam fora do agrupamento.
+- Adicionadas informações territoriais do IBGE (nome do município e UF) e descrições oficiais dos grupos CNAE. Após limpeza de colunas redundantes: **29.601 linhas**, descrições completas, `codigo_ibge` convertido para `int64`.
+- Totais validados: **393.415 admissões, 315.484 desligamentos e saldo +77.931**; diferenças em relação ao CAGED com município identificado correspondem a 50 admissões e 72 desligamentos nos 122 registros sem grupo.
+- Executado sem erro relatado o salvamento `data/processed/trabalho/emprego_por_municipio_grupo_2025.parquet` com `index=False`.
+
+## 8. Integração SISMIGRA + CAGED 2025 — concluída (26–27/10/2026)
+- Recarregado o arquivo `data/processed/migracao/indicadores_migracao_municipal.parquet`: **934 municípios**, 8 colunas, `codigo_ibge` do tipo `Int64`, sem duplicatas nem nulos.
+- Agregados os indicadores de trabalho por município em `emprego_municipal_2025`: **1.054 municípios**, códigos únicos e totais reconciliados (**393.415 admissões, 315.484 desligamentos, saldo +77.931**).
+- Feito `outer merge` por `codigo_ibge`, com `validate="one_to_one"` e `indicator=True`: **1.228 municípios** distintos, sendo **760 presentes nas duas fontes**, **174 apenas no SISMIGRA** e **294 apenas no CAGED**.
+- Verificado que todos os 1.228 códigos possuem correspondência na referência oficial IBGE. Completados `municipio` e `uf` por `fillna()` a partir da referência; nenhuma identificação geográfica permaneceu ausente. Removidas as colunas geográficas auxiliares, mantendo `_merge` para rastrear cobertura.
+- Identificados **481 valores ausentes** em `variacao_%`: **294** correspondem a municípios exclusivos do CAGED, e **187** a municípios presentes no SISMIGRA com **zero registros em 2024**; preservados como nulos por não haver denominador válido.
+- Mantidos `NaN` nos indicadores de fonte ausente, sem converter automaticamente em zeros: **294** municípios sem indicadores migratórios no cruzamento e **174** sem indicadores de emprego.
+- Validação aritmética: **1.054 municípios verificados**, **zero divergências** na identidade `saldo = admissoes - desligamentos`.
+- Usuário confirmou a exportação da base `data/processed/indicadores_integrados_municipais.parquet`, com `_merge` convertido para texto e `index=False`; contém **1.228 municípios** e **12 colunas** na versão salva.
+
+## 9. Exploração integrada e correlações — concluída (27–28/10/2026)
+- Explorado ranking municipal por registros SISMIGRA em 2025: São Paulo **38.523**, Boa Vista **35.014**, Curitiba **12.861**, Manaus **8.759**, Rio de Janeiro **7.426** entre os cinco primeiros.
+- Explorado ranking de saldo CAGED 2025: Curitiba **+7.422**, São Paulo **+6.489**, Chapecó **+2.416**, Cascavel **+1.939**, Joinville **+1.842** entre os cinco primeiros; também examinados municípios com saldos negativos (menor: Nova Erechim/SC, **−167**).
+- Analisadas as distribuições com `.describe()`: SISMIGRA 2025, mediana **34**, máximo **38.523**; admissões, mediana **54**, máximo **34.973**; saldo, mediana **14**, máximo **7.422**. Observada forte assimetria positiva.
+- Instalado/acionado Matplotlib para gráficos e produzidos histogramas de registros migratórios e admissões. Aplicada transformação `np.log1p()` para visualizar distribuições sem a distorção causada pela magnitude dos extremos; produzidos gráficos de dispersão nas escalas original e logarítmica.
+- Correlações calculadas nos municípios com pares de valores disponíveis (**760 municípios** nas análises migração × emprego): Pearson, SISMIGRA 2025 × admissões nos valores originais **0,737113**; Pearson na escala `log1p` **0,694214**; Spearman SISMIGRA 2025 × admissões **0,699864**; Spearman SISMIGRA 2025 × saldo **0,557984**. Spearman admissões × saldo **0,73616**.
+- Interpretação registrada: associação positiva não implica causalidade, os registros SISMIGRA não medem estoque de população migrante, e `saldo` é parcialmente derivado de admissões. Admitidas candidaturas a indicadores principais de migração e admissões, mas **sem definir pesos ou ranking final**.
+- Criadas as colunas exploratórias `log_migracao` e `log_admissoes` no DataFrame em memória; a exportação anterior da base integrada ocorreu antes dessas colunas exploratórias.
+
+## 10. Inventário educacional — iniciado (28/10/2026)
+- Inspecionada `data/raw/educacao/` de forma recursiva com `Path.rglob("*.csv")`.
+- Confirmados **8 arquivos**: seis do Censo Escolar 2025 (`Tabela_Curso_Tecnico_2025_V2.csv`, `Tabela_Docente_2025_V2.csv`, `Tabela_Escola_2025_V2.csv`, `Tabela_Gestor_Escolar_2025_v2.csv`, `Tabela_Matricula_2025_V2.csv`, `Tabela_Turma_2025_V2.csv`) e dois do ensino superior 2024 (`MICRODADOS_CADASTRO_CURSOS_2024.CSV`, `MICRODADOS_ED_SUP_IES_2024.CSV`).
+- Definida a prioridade de exploração: cursos técnicos e escolas, depois cadastro de cursos superiores.
+- **A criação do notebook `03_exploracao_educacao.ipynb` foi recomendada, mas ainda não foi confirmada pelo usuário**; nenhuma exploração dos campos educacionais foi relatada como concluída.
+
 ## Pendências (não concluídas)
+- **Próximo passo:** criar/abrir `notebooks/03_exploracao_educacao.ipynb` e carregar `Tabela_Curso_Tecnico_2025_V2.csv` (testar `encoding="latin1"` e `sep=";"`); verificar `.shape` e `.columns`.
+- Explorar e integrar dados de oferta formativa do Censo Escolar 2025 e ensino superior 2024, distinguindo oferta de formação de demanda observada por cursos.
+- Retomar o CAGED **2026 (janeiro–julho)** para análises de ocupações CBO e grupos CNAE; comparar com janeiro–julho de 2025, não com o ano completo; posteriormente integrar os resultados.
+- Definir critérios e pesos de priorização territorial apenas após avaliar limitações e indicadores educacionais.
+- Verificar os códigos CNAE sem correspondência (`9900800`, `8630505`) e documentar formalmente diferenças entre versões das classificações; evitar descrições não verificadas.
+- Padronizar identificadores CNAE como texto com zeros à esquerda nas tabelas finais, quando apropriado.
+- Exportar as tabelas derivadas de ocupações e seções CNAE, caso ainda não tenham sido salvas.
+
 - **Próxima sessão:** construir indicadores de emprego de migrantes **por município IBGE de 7 dígitos e grupo CNAE**, usando `caged_atividades`. Primeiro identificar as colunas `codigo_ibge`, `grupo` e `saldomovimentacao`, depois agrupar e validar admissões, desligamentos e saldo.
 - Verificar os códigos CNAE sem correspondência (`9900800`, `8630505`) e documentar formalmente a diferença entre versões das classificações, se necessário; evitar atribuir descrições não verificadas.
 - Padronizar identificadores CNAE como texto com zeros à esquerda em tabelas consolidadas, quando apropriado.
