@@ -1,6 +1,6 @@
 # Diário do projeto — UNIESF Opportunity Map
 
-**Última atualização:** 29/10/2026  
+**Última atualização:** 02/11/2026  
 **Regra de registro:** somente etapas efetivamente executadas e resultados confirmados durante o trabalho. Dados e indicadores não representam necessariamente pessoas únicas.
 
 ## 1. Organização e inventário dos dados — concluído
@@ -109,17 +109,80 @@
 - Criado `oferta_por_area_2025`: ofertas, cursos distintos, instituições e matrículas por área de formação. Principais áreas por ofertas: **Gestão e negócios (9.609; 711.071 matrículas)**, **Informação e comunicação (5.738; 424.627)** e **Ambiente e saúde (5.668; 503.998)**.
 - Criado `oferta_por_curso_2025`: ofertas, municípios atendidos e matrículas por curso. Principais cursos por ofertas: Administração (**4.877 ofertas, 1.947 municípios, 395.059 matrículas**), Enfermagem (**2.245, 955, 298.699**), Informática (**2.052, 1.206, 167.134**), Desenvolvimento de Sistemas (**1.977, 784, 150.862**) e Logística (**1.473, 635, 88.259**).
 - Criado `educacao_municipio_curso_2025`, agrupando por município, código e nome de curso e área profissional, com instituições distintas e soma de matrículas: **18.793 combinações município–curso e 6 colunas**, **2.490.145 matrículas agregadas**, correspondendo exatamente às **2.490.145 originais**, **zero combinações duplicadas**.
-- Foi fornecido código para renomear `CO_MUNICIPIO` para `codigo_ibge` e salvar `data/processed/educacao/educacao_municipio_curso_2025.parquet`, **mas a execução e a exportação deste arquivo detalhado ainda não foram confirmadas pelo usuário**.
+- Foi fornecido código para renomear `CO_MUNICIPIO` para `codigo_ibge` e salvar `data/processed/educacao/educacao_municipio_curso_2025.parquet`, **e o usuário confirmou posteriormente que o arquivo detalhado foi salvo (ver seção 13)**.
 - Convenção de trabalho acordada: reduzir exercícios repetitivos, priorizar conceitos novos e explicar brevemente com comentários `#` todo código fornecido para copiar.
 
-## Pendências (não concluídas)
-- **Retomada:** confirmar a execução do salvamento da base detalhada `educacao_municipio_curso_2025.parquet`; depois começar a **correspondência documentada entre cursos técnicos INEP, ocupações CBO e grupos CNAE**, evitando equivalências automáticas ou inferências de demanda.
-- Explorar, se pertinente, as bases de escolas e de educação superior 2024 e integrar os indicadores educacionais à base SISMIGRA–CAGED por `codigo_ibge`, respeitando a granularidade.
-- Retomar CAGED **2026 (janeiro–julho)** por ocupações e grupos CNAE e comparar ao período equivalente de 2025; a comparação municipal parcial anterior já foi salva.
-- Definir critérios e pesos de priorização territorial somente após avaliação metodológica e análise de sensibilidade.
-- Verificar os códigos CNAE sem correspondência (`9900800`, `8630505`), com atenção à versão da classificação.
-- Padronizar códigos CNAE como texto com zeros à esquerda nas tabelas finais; verificar se tabelas derivadas por CBO e seção CNAE precisam ser persistidas.
+## 13. Retomada da oferta técnica e CBO — 30/10/2026
+- Usuário confirmou a existência de `data/processed/educacao/educacao_municipio_curso_2025.parquet` no disco local.
+- Revisitado o CAGED 2025, identificando que `caged_atividades` já tinha `cbo2002ocupacao`, `TITULO`, `grupo` e descrições CNAE. Evitou-se novo `merge` de títulos CBO.
+- Criado/mostrado ranking `ranking_cbo_2025` agrupado por código CBO e título. Destaques por admissões: alimentador de linha de produção (52.750), faxineiro (26.620), auxiliar nos serviços de alimentação (17.550), magarefe (17.010), servente de obras (15.787), repositor de mercadorias (14.440).
+- Proposta uma taxonomia inicial manual de ocupações CBO por trilhas profissionais (produção, comércio, alimentação, logística, construção, limpeza e agropecuária), **sem confirmação de execução, validação ou persistência**. Não tratar como matriz definitiva de cursos.
+
+## 14. Ensino superior 2024 — exploração e base municipal validadas (30/10/2026)
+- No `03_exploracao_educacao.ipynb`, carregados `MICRODADOS_CADASTRO_CURSOS_2024.CSV` (**720.349 linhas, 223 colunas**) e `MICRODADOS_ED_SUP_IES_2024.CSV` (**2.561 linhas, 84 colunas**).
+- Identificados 2.561 códigos de IES, 46.150 códigos de curso, 3.551 municípios no cadastro de cursos e 698 municípios de sede de IES; 452 repetições de combinação curso–município. `QT_CURSO` = 1 em 45.776 registros e 0 em 674.573 — contar linhas superestimaria a oferta de cursos.
+- Estrutura por `TP_DIMENSAO`: presencial municipal (dim. 1, 34.824 linhas, 34.479 cursos contabilizados, 1.121 municípios); EAD territorial (dim. 2, 673.756 linhas, 0 cursos contabilizados, 3.524 municípios); EAD nacional (dim. 3, 11.319 linhas, 11.297 cursos contabilizados, sem município); EAD exterior (dim. 4, 450 linhas).
+- Somatórios de matrículas: presencial dimensão 1 **5.037.875**; EAD territorial dimensão 2 **5.186.852** antes de filtrar municípios. Identificados **9 registros EAD sem `CO_MUNICIPIO`**, dos quais dois somam **41 matrículas** (17 + 24). Portanto, **5.186.811 matrículas EAD** foram atribuíveis a municípios. Não imputar localidades desconhecidas.
+- Por nacionalidade estrangeira, dimensão 1 **15.981 matrículas** e dimensão 2 **6.939**; isso não identifica refugiados, nem necessariamente pessoas distintas.
+- Construídos `presencial_municipal_2024` (cursos presenciais, IES, matrículas, matrículas de estrangeiros) e `ead_municipal_2024` (matrículas EAD, ingressantes EAD e matrículas de estrangeiros EAD).
+- Integração `outer` das modalidades em `educacao_superior_municipal_2024`: **3.551 municípios**, 1.094 nas duas modalidades, 27 somente presencial, 2.430 somente EAD; zero duplicações. Após referência IBGE, **3.551 linhas, 10 colunas**, sem nome/UF ausentes.
+- **Salvo e confirmado:** `data/processed/educacao/indicadores_ensino_superior_municipal_2024.parquet`.
+- Ressalva: dimensão 2 descreve a localização territorial vinculada a polos EAD, **não prova oferta de cursos sediados no município nem residência dos alunos**; dimensão 3 não tem identificação municipal. Presencial 2024 e técnico 2025 não compartilham o mesmo ano-base.
+
+## 15. Base municipal consolidada em quatro dimensões — 30/10/2026
+- Criado `04_integracao_indicadores.ipynb`. União `outer` de migração + emprego (**1.228 municípios**) com educação técnica (**3.385**) resultou em **3.689 municípios**: 924 em ambas as bases, 2.461 somente educação técnica e 304 somente na base anterior.
+- Corrigidos nomes e UFs com referência IBGE: zero geometadados ausentes e zero códigos duplicados. Cobertura das três dimensões: **2.628 municípios com uma**, **438 com duas** e **623 com três**.
+- Inclusão de ensino superior municipal (**3.551**) por `outer merge`: **4.441 municípios** (2.799 ambas as bases, 890 somente anterior, 752 somente superior). Corrigidos 752 nomes/UF ausentes por referência IBGE, sem duplicação.
+- Recalculada cobertura: 1 dimensão = 1.536 municípios; 2 = 1.919; 3 = 394; 4 = 592. Individualmente: migração 934, emprego de migrantes 1.054, técnico 3.385, superior 3.551.
+- Totais reconciliados na base consolidada: SISMIGRA 2025 **236.777 registros**; CAGED migrantes 2025 **393.415 admissões** (origem município–grupo CNAE, com 50 admissões e 72 desligamentos sem grupo fora do agregado); educação técnica 2025 **2.490.145 matrículas**; superior presencial 2024 **5.037.875 matrículas**; superior EAD territorial 2024 **5.186.811**.
+- **Salvo e confirmado:** `data/processed/indicadores_completos_municipais.parquet`, **4.441 linhas, 30 colunas** na versão exportada. Integrações e indicadores posteriores no notebook não estão automaticamente persistidos nesse arquivo anterior.
+
+## 16. Ranking exploratório de volume — 30/10 a 02/11/2026
+- Definido universo analítico principal de **760 municípios** com indicadores de migração SISMIGRA 2025 e admissões de migrantes CAGED 2025 simultaneamente.
+- Distribuições fortemente assimétricas (SISMIGRA mediana 46,5, máximo 38.523; admissões mediana 90, máximo 34.973). Criados `score_migracao` e `score_emprego` por `np.log1p` e Min-Max dentro dos 760 municípios; ambos no intervalo 0–1.
+- Construídos cenários de pesos: equilibrado 50/50, prioridade migração 60/40, prioridade emprego 40/60. Calculadas pontuações e posições. Ranking equilibrado inicial: São Paulo 100,00 (1º), Curitiba 94,77 (2º), Boa Vista 92,17 (3º), Chapecó 84,93 (4º), Manaus 84,22 (5º), Florianópolis 83,23 (6º), Joinville 83,05 (7º), Cascavel 82,62 (8º), Caxias do Sul 81,53 (9º), Rio de Janeiro 81,30 (10º).
+- Sensibilidade do ranking: Spearman entre os cenários extremos **0,986**, mudança mediana de 14 posições, mudança média de 23,97, máximo 214; **18 municípios comuns aos três Top 20**. Maiores divergências incluem Pinto Bandeira/RS (0 SISMIGRA, 586 admissões) e Francisco Alves/PR (329 SISMIGRA, 9 admissões).
+- Diferença dos componentes normalizados também investigada; isso permite identificar perfis relativos ao próprio índice, não empregabilidade.
+- Índice `indice_oportunidade` = 100 × média dos dois scores; exploratório, **não representa população migrante nem potencial de expansão comprovado**. O ranking favorece volume mesmo após a transformação logarítmica.
+
+## 17. Novo Caged geral 2025 — 12 arquivos mensais processados (02/11/2026)
+- Usuário baixou os 12 arquivos `CAGEDMOV202501.txt` a `CAGEDMOV202512.txt` em `data/raw/trabalho/caged_geral/`. Criado fluxo no `05_caged_geral.ipynb` com `pd.read_csv(..., chunksize=200_000)`, lendo `uf`, `município`, `saldomovimentação`, `cbo2002ocupação`, `seção`, `subclasse`; contagem de admissões e desligamentos.
+- Agregadas três granularidades: município, município × CBO, município × seção e subclasse CNAE. Totais brutos de MOV: **26.321.557 admissões**, **25.064.560 desligamentos**, saldo **+1.256.997**; reconciliados entre as três tabelas.
+- Associação do município CAGED de seis dígitos ao código IBGE de sete, com referência previamente validada. Único código não geográfico: `999999` (UF 99), **3.272 admissões e 2.978 desligamentos**, retirado dos agregados municipais, mas reconhecido na reconciliação nacional.
+- Tabelas finais, todas sem códigos IBGE ausentes: município **5.566 linhas**; município × CBO **994.623**; município × CNAE **588.508**. Totais idênticos nas três: **26.318.285 admissões**, **25.061.582 desligamentos**, saldo **+1.256.703**.
+- **Salvos e confirmados:** `data/processed/trabalho/emprego_geral_municipal_2025.parquet`, `emprego_geral_municipio_cbo_2025.parquet`, `emprego_geral_municipio_cnae_2025.parquet`.
+- **Ressalva crucial:** somente `CAGEDMOV` foi processado; arquivos `FOR` e `EXC`, revisões e diferenças de extração não foram reconciliados. Estes totais não devem ser descritos como estatística oficial definitiva de 2025 sem conferência adicional. Uma tabela municipal geral com 5.566 localidades não significa que todos os 5.571 municípios tenham movimentações.
+
+## 18. Integração do mercado geral e indicador de participação migrante (02/11/2026)
+- Integração `outer` do emprego geral municipal à base consolidada: **5.567 municípios, 34 colunas**, zero duplicações: 4.440 em ambas as bases, 1.126 somente CAGED geral e 1 somente na base anterior.
+- **1.054 municípios** com admissões migrantes e admissões gerais comparáveis; nenhum município apresentou admissões migrantes superiores às gerais.
+- Calculada `participacao_migrante_pct` = admissões de migrantes / admissões gerais × 100, com denominador positivo. **0 ausentes e 0 acima de 100%**. Distribuição entre 1.054 municípios: média simples **3,876746%**, mediana **1,348145%**, P95 **15,286325%**, máximo **54,826255%**.
+- Maiores percentuais com pelo menos 100 admissões gerais: Pacaraima/RR **54,83%** (142/259), Guatambu/SC **52,77%** (1.826/3.460), Chuí/RS **52,38%** (782/1.493), Pinto Bandeira/RS **51,22%** (586/1.144).
+- Participação ponderada apenas entre os 1.054 municípios comparados: **393.415 / 22.215.954 = 1,77%**; média simples dos municípios **3,88%**. **Não chamar 1,77% de participação nacional**, pois o denominador abrange só o subconjunto com registro de migrantes nesta base.
+- Comparabilidade ainda precisa ser validada entre a extração de migrantes (CAGED com recorte por país, agregação CNAE com perdas) e CAGED geral MOV; a verificação de percentuais ≤100% é necessária, mas insuficiente.
+
+## 19. População municipal e índice de intensidade — 02/11/2026
+- Usuário baixou planilha IBGE com abas `BRASIL E UFS` e `MUNICÍPIOS`, identificada como **estimativas de população residente com referência em 1º de julho de 2026**.
+- Leitura da segunda aba com `header=1`, exclusão de coluna vazia, códigos municipais de cinco dígitos preservados como texto; combinação de `COD. UF` (2 dígitos) + `COD. MUNIC` (5) gerou `codigo_ibge` de 7 dígitos. Validada tabela `populacao_municipal`: **5.571 municípios**, sem duplicações e sem população ausente.
+- População de 2026 integrada à base de 5.567 municípios, sem ausências. Criado indicador `registros_por_10mil_hab` = SISMIGRA 2025 / população estimada 2026 × 10.000. Cobertura **934 municípios com registros na tabela SISMIGRA**; média 24,501, mediana 8,165, P95 88,141, máximo 898,807.
+- Municípios em destaque no indicador: Pacaraima/RR **898,81**, Boa Vista/RR **698,93**, Chuí/RS **425,96**, Barra do Quaraí/RS **400,92**, Bonfim/RR **398,19** registros por 10 mil habitantes.
+- Combinados `indice_oportunidade`, `registros_por_10mil_hab` e `participacao_migrante_pct` nos mesmos **760 municípios** do ranking de volume: Spearman volume × registros/hab **0,563674**; volume × participação nas admissões **0,347025**; registros/hab × participação nas admissões **0,707085**. Correlação não demonstra causalidade.
+- Normalizados os dois indicadores de intensidade com `log1p` e Min-Max no universo de 760 municípios, combinando pesos 50/50 no `indice_intensidade` (0–100). Maiores índices: Pacaraima/RR **100,00**, Chuí/RS **93,96**, Guatambu/SC **84,06**, Boa Vista/RR **83,96**, Itapiranga/SC **79,42**, Seara/SC **78,81**.
+- Comparação dos rankings de volume e intensidade: Spearman **0,502**; **somente 2 municípios comuns aos dois Top 20**: Boa Vista/RR (volume 3º; intensidade 4º) e Chapecó/SC (volume 4º; intensidade 11º).
+- Sensibilidade dos pesos no índice de intensidade (60/40, 50/50, 40/60): Spearman entre extremos **0,983** e **16 municípios comuns aos três Top 20**.
+- Decisão metodológica: **manter dois rankings separados** — volume e intensidade — para preservar a distinção entre grandes polos e relevância relativa; pesos 50/50 permanecem hipóteses exploratórias.
+- Consolidado `ranking_final_2025` com indicadores e posições dos dois índices, mais população 2026. **Usuário confirmou salvamento** de `data/processed/rankings/ranking_municipal_volume_intensidade_2025.parquet` (760 municípios). O código que gerou a exportação foi corrigido para adicionar `populacao_2026` ausente na tabela intermediária.
+- **Ressalvas:** população 2026 usada como denominador aproximado de registros administrativos de 2025; índice por habitante não é prevalência de migrantes residentes; participação nas admissões não mede proporção de migrantes empregados nem taxa de empregabilidade; municípios sem registros nas fontes não devem virar automaticamente zeros; escalas Min-Max dependem dos 760 municípios e os valores são relativos a esse universo.
+
+## Pendências e próxima etapa (não concluídas)
+- **Módulo 1:** documentar formalmente fórmulas, universo de 760 municípios, escolha de pesos, sensibilidade, decisões de inclusão/exclusão e limitações; preparar arquivos e visualizações para dashboard. Avaliar alternativas com população estimada 2025 e denominadores mais alinhados temporalmente.
+- **Qualidade do CAGED:** conferir efeitos de `FOR`, `EXC`, revisões e comparabilidade entre dados gerais e migrantes; investigar os dois códigos CNAE sem correspondência (`9900800`, `8630505`); preferir numerador de migrantes municipal integral quando possível, sem perder 50 admissões por lacunas de CNAE.
+- **Módulo 2 — O que oferecer?:** comparar CBO e CNAE do mercado geral e de migrantes por município; fundamentar trilhas de competências e correspondências com cursos técnicos e eventualmente superiores. A classificação preliminar proposta não foi validada/executada. Evitar inferir demanda por cursos automaticamente das admissões.
+- **Módulo 3 — Como expandir?:** formular recomendações operacionais de oferta online, avaliação, parcerias e acompanhamento.
+- Preparar Power BI, comunicação visual e relatório executivo; considerar modelos SQL quando ajudarem a documentação e o portfólio.
+- Retomar comparações CAGED 2026 (jan–jul) por ocupação e grupo CNAE, sem misturar janela parcial com 2025 anual.
+- Salvar, se necessário, tabela de população 2026 e versão completa atualizada da base integrada com emprego geral/população, pois o Parquet `indicadores_completos_municipais.parquet` foi exportado **antes** dessas inclusões.
 
 ---
 
-**Nota metodológica:** os registros SISMIGRA são administrativos e não equivalem necessariamente à população residente ou a indivíduos únicos. O CAGED mede movimentações formais, não vagas abertas ou demanda direta por capacitação. Cursos e matrículas informam oferta/cadastros educacionais e podem refletir instituições EAD com alcance supramunicipal. A presença administrativa da instituição no município não localiza necessariamente cada estudante.
+**Ressalva metodológica geral:** os índices são instrumentos **exploratórios de comparação territorial**, não previsão de matrículas, demanda comprovada por capacitação ou priorização final. SISMIGRA refere-se a registros administrativos, não a indivíduos únicos nem ao estoque de residentes migrantes; CAGED é fluxo de vínculos formais, não pessoas únicas ou vagas abertas. A escolaridade é medida por cadastros de instituições/cursos, e localização de EAD não equivale à residência dos alunos. Manter ano e universo de cada base explícitos.
