@@ -1,6 +1,6 @@
 # Diário do projeto — UNIESF Opportunity Map
 
-**Última atualização:** 03/11/2026  
+**Última atualização:** 10/11/2026
 **Regra de registro:** somente etapas efetivamente executadas e resultados confirmados durante o trabalho. Dados e indicadores não representam necessariamente pessoas únicas.
 
 ## 1. Organização e inventário dos dados — concluído
@@ -222,3 +222,15 @@
 ---
 
 **Ressalva metodológica geral:** o produto é uma **ferramenta exploratória de apoio à decisão**, não previsão de matrículas nem diagnóstico causal de demanda. Preserve sempre o ano, a população-base e as lacunas de cobertura de cada indicador.
+
+## 23. Ampliação do SISMIGRA, países e cadastro ativo — 10/11/2026
+
+- Notebook 01 ampliado para 2022–2026 e executado integralmente. Arquivos de 2022: **243.675 registros, 220.716 com código IBGE**; 2023: **232.193 registros, 208.376 com código IBGE**. Os totais municipais de 2024–2026 foram preservados, com comparação município a município à base anterior. A série larga passou de 934 para **1.015 municípios**; municípios adicionais têm registros apenas nos anos incorporados.
+- Regras comuns reunidas em `src/migracao.py`: limpeza de texto e marcadores, faixas, idade negativa, ano de entrada, geografia e equivalências de país. Sem exclusão automática de linhas idênticas. Bases anuais completas preservam ausência geográfica; bases territoriais e fatos municipais usam seu respectivo recorte documentado.
+- Criadas análises de **país de nascimento e nacionalidade separadas**. Na série anual, país de origem foi definido como país de nascimento. Fatos nacionais conservam **1.166.454 registros** dos cinco arquivos; fatos municipais conservam **1.041.521 registros com código IBGE**. Os 622 registros de 2026 com idade negativa continuam nas contagens, sem faixa etária válida.
+- Origem Venezuela: **144.755 (59,40%) em 2022**, **125.759 (54,16%) em 2023** e **101.652 (38,28%) em 2025**. Origem Cuba: **7.130 em 2022**, **7.717 em 2023**, **16.910 em 2024** e **37.451 em 2025**. Comparações de crescimento excluem 2026 parcial.
+- Criado e executado `08_exploracao_sismigra_ativos.ipynb`, com processamento por lotes. O arquivo contém **3.879.289 registros**: **2.080.214 ATIVO**, **1.230.125 PRAZO VENCIDO**, **500.062 CANCELADO**, **63.671 INATIVO** e **5.217 EXCLUÍDO**. Todas as situações preservadas; subconjunto ativo filtrado explicitamente e reconciliado por país e UF.
+- O cadastro não tem município, identificador pessoal nem data de referência. `pais` foi tratado como **país informado pela fonte**, sem assumir nascimento/nacionalidade. Não criado ano fictício do estoque nem distribuição municipal. Não somar cadastro aos registros anuais.
+- Notebook 07 atualizado e executado: `fato_indicadores` inclui 2022/2023; exportados **nove fatos de migração e três dimensões novas** em CSV (`;`, UTF-8-SIG) e Parquet, para `data/processed/powerbi/`. Dimensão de país com **248 países/categorias** e chaves textuais internas, sem atribuição de ISO. Dimensão municipal existente: **5.571 municípios**. Detalhes de grãos, relacionamentos, medidas e limitações em `docs/analise_sismigra_powerbi.md`.
+- Validação: **seis testes automatizados aprovados**; notebooks 01/08/07 executados sem erro; totais CSV/Parquet, chaves estrangeiras e contagens das bases completas conferidos. Dados originais e inventário previamente modificado pelo usuário preservados. Gráficos e tabelas gravados nos notebooks.
+- Modelagem e criação do relatório dentro do Power BI Desktop continuam pendentes. Os rankings exploratórios de oportunidade de 2025 não foram recalculados nesta ampliação.
